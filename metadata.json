@@ -1,0 +1,6 @@
+{
+  "name": "Potencializa",
+  "description": "Uma jornada interativa e transformadora de autoconhecimento e evolução para participantes do programa Potencializa.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
