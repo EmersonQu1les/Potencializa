@@ -21,7 +21,9 @@ import {
   ExternalLink,
   ChevronRight,
   Sun,
-  Moon
+  Moon,
+  Download,
+  FileDown
 } from 'lucide-react';
 
 interface ProjectionData {
@@ -257,8 +259,216 @@ export default function ProjecaoView() {
   const activeParticipant = rawParticipants.find(p => p.id === selectedParticipantId) || null;
   const activeParticipantAnswers = activeParticipant ? (activeParticipant.answers && activeParticipant.answers[chapter.id]) || {} : {};
 
+  // Export high-resolution PNG
+  const handleExportPNG = () => {
+    const svgElement = document.querySelector('svg');
+    if (!svgElement) {
+      alert('Mandala SVG não encontrado para exportação.');
+      return;
+    }
+
+    try {
+      // 1. Clone the SVG to avoid mutating the active DOM
+      const clonedSvg = svgElement.cloneNode(true) as SVGSVGElement;
+      
+      // 2. Set high-resolution dimensions
+      clonedSvg.setAttribute('width', '2400');
+      clonedSvg.setAttribute('height', '2400');
+      clonedSvg.style.width = '2400px';
+      clonedSvg.style.height = '2400px';
+
+      // 3. Embed styles so text fonts and styling look beautiful and consistent
+      const styleElement = document.createElementNS('http://www.w3.org/2000/svg', 'style');
+      styleElement.textContent = `
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;900&family=Playfair+Display:ital,wght@0,400..900;1,400..900&display=swap');
+        text {
+          font-family: 'Playfair Display', Georgia, serif;
+        }
+        text[fontFamily="sans-serif"] {
+          font-family: 'Inter', system-ui, -apple-system, sans-serif;
+        }
+      `;
+      clonedSvg.insertBefore(styleElement, clonedSvg.firstChild);
+
+      // 4. Serialize SVG
+      const serializer = new XMLSerializer();
+      const svgString = serializer.serializeToString(clonedSvg);
+      
+      // 5. Create blob and load image
+      const svgBlob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
+      const url = URL.createObjectURL(svgBlob);
+      const img = new Image();
+      
+      img.onload = () => {
+        // 6. Setup Canvas
+        const canvas = document.createElement('canvas');
+        canvas.width = 2800;
+        canvas.height = 2800;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return;
+
+        // Draw solid background with beautiful gradient glow
+        const bgGradient = ctx.createRadialGradient(1400, 1400, 100, 1400, 1400, 1400);
+        if (theme === 'dark') {
+          ctx.fillStyle = '#050505';
+          ctx.fillRect(0, 0, 2800, 2800);
+          
+          bgGradient.addColorStop(0, 'rgba(242, 125, 38, 0.05)');
+          bgGradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+          ctx.fillStyle = bgGradient;
+          ctx.fillRect(0, 0, 2800, 2800);
+        } else {
+          ctx.fillStyle = '#F5F4F0';
+          ctx.fillRect(0, 0, 2800, 2800);
+          
+          bgGradient.addColorStop(0, 'rgba(242, 125, 38, 0.06)');
+          bgGradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
+          ctx.fillStyle = bgGradient;
+          ctx.fillRect(0, 0, 2800, 2800);
+        }
+
+        // Draw decorative frame/border
+        ctx.strokeStyle = theme === 'dark' ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.05)';
+        ctx.lineWidth = 10;
+        ctx.strokeRect(40, 40, 2720, 2720);
+        
+        ctx.strokeStyle = theme === 'dark' ? 'rgba(242, 125, 38, 0.2)' : 'rgba(242, 125, 38, 0.15)';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(60, 60, 2680, 2680);
+
+        // Draw title on the canvas
+        ctx.fillStyle = theme === 'dark' ? '#FFFFFF' : '#050505';
+        ctx.font = "italic bold 64px 'Playfair Display', Georgia, serif";
+        ctx.textAlign = 'center';
+        ctx.fillText("Linha do Tempo Coletiva • Potencializa", 1400, 180);
+
+        ctx.fillStyle = '#F27D26';
+        ctx.font = "bold 24px 'Inter', sans-serif";
+        ctx.fillText(`CAPÍTULO ${chapter.id}: ${chapter.title.toUpperCase()}`, 1400, 240);
+
+        // Draw the SVG Mandala centered
+        ctx.drawImage(img, 200, 300, 2400, 2400);
+
+        // Draw footer branding
+        ctx.fillStyle = theme === 'dark' ? 'rgba(255, 255, 255, 0.3)' : 'rgba(0, 0, 0, 0.3)';
+        ctx.font = "24px 'Inter', sans-serif";
+        ctx.fillText("SESC SENAC RS • Programa Potencializa 2026", 1400, 2720);
+
+        // 7. Trigger download
+        canvas.toBlob((blob) => {
+          if (!blob) return;
+          const pngUrl = URL.createObjectURL(blob);
+          const downloadLink = document.createElement('a');
+          downloadLink.href = pngUrl;
+          downloadLink.download = `Potencializa_Mandala_Cap_${chapter.id}_${theme}.png`;
+          downloadLink.click();
+          URL.revokeObjectURL(pngUrl);
+        }, 'image/png');
+
+        URL.revokeObjectURL(url);
+      };
+
+      img.src = url;
+    } catch (e) {
+      console.error(e);
+      alert('Erro ao gerar PNG de alta resolução.');
+    }
+  };
+
+  // Export PDF via window.print()
+  const handleExportPDF = () => {
+    window.print();
+  };
+
   return (
     <div className="min-h-screen bg-[#050505] text-[#E0DED7] flex flex-col relative overflow-hidden select-none selection:bg-[#F27D26] selection:text-black">
+      {/* Print Stylesheet */}
+      <style>{`
+        @media print {
+          @page {
+            size: A4 landscape;
+            margin: 0.8cm;
+          }
+          body, html, #root, .min-h-screen, main {
+            background: #FFFFFF !important;
+            color: #050505 !important;
+            height: auto !important;
+            min-height: 0 !important;
+            overflow: visible !important;
+          }
+          /* Hide non-printable layout chrome */
+          .no-print, header, .chapter-selection-rail, button, [class*="bg-radial-gradient"], .absolute {
+            display: none !important;
+          }
+          /* Make full width and row-aligned */
+          .max-w-7xl {
+            width: 100% !important;
+            max-width: 100% !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            display: flex !important;
+            flex-direction: row !important;
+            align-items: center !important;
+            justify-content: space-between !important;
+            gap: 24px !important;
+          }
+          /* SVG container adjustments for print */
+          svg {
+            max-width: 500px !important;
+            max-height: 500px !important;
+            margin: 0 auto !important;
+            filter: none !important;
+          }
+          /* Override light lines of dark theme to dark lines for print */
+          circle[stroke*="rgba(255,255,255"] {
+            stroke: rgba(0, 0, 0, 0.1) !important;
+          }
+          circle[stroke*="rgba(242,125,38"] {
+            stroke: rgba(242, 125, 38, 0.4) !important;
+          }
+          line[stroke*="rgba(255,255,255"] {
+            stroke: rgba(0, 0, 0, 0.08) !important;
+          }
+          line[stroke*="rgba(242,125,38"] {
+            stroke: rgba(242, 125, 38, 0.5) !important;
+          }
+          circle[fill*="rgba(255,255,255"] {
+            fill: rgba(0, 0, 0, 0.1) !important;
+          }
+          /* Keep text readable */
+          text {
+            fill: #050505 !important;
+          }
+          text[fill="#F27D26"], text[fill="#FFFFFF"] {
+            fill: #F27D26 !important;
+            font-weight: bold !important;
+          }
+          /* Print details card styling */
+          .shrink-0, [class*="bg-[#3a1510]/5"] {
+            width: 360px !important;
+            background: #FAF9F6 !important;
+            border: 1px solid rgba(242, 125, 38, 0.3) !important;
+            color: #050505 !important;
+            box-shadow: none !important;
+            border-radius: 16px !important;
+            padding: 16px !important;
+          }
+          /* Color overrides inside card */
+          .shrink-0 p, .shrink-0 span, .shrink-0 h3, .shrink-0 div {
+            color: #050505 !important;
+          }
+          /* Highlight specific header in card */
+          [class*="text-[#F27D26]"] {
+            color: #F27D26 !important;
+          }
+          /* Hide animations or glowing highlights */
+          .animate-ping, .animate-pulse {
+            animation: none !important;
+            display: none !important;
+          }
+        }
+      `}</style>
+
       {/* Dynamic Background ambience */}
       <div className="absolute inset-0 opacity-20 pointer-events-none">
         <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] rounded-full bg-radial-gradient from-[#F27D26] to-transparent blur-[140px]" />
@@ -356,14 +566,34 @@ export default function ProjecaoView() {
           </div>
 
           {isAdminMode && (
-            <button
-              onClick={() => {
-                window.location.href = '/admin';
-              }}
-              className="px-4 py-1.5 border border-[#F27D26]/20 hover:border-[#F27D26]/60 bg-transparent text-[#F27D26] hover:text-white rounded-full text-xs uppercase tracking-wider font-bold transition cursor-pointer"
-            >
-              Voltar ao Painel
-            </button>
+            <div className="flex items-center gap-2 no-print">
+              {(viewMode === 'mandala' || viewMode === 'diagram') && (
+                <button
+                  onClick={handleExportPNG}
+                  className="px-4 py-1.5 bg-[#F27D26] hover:bg-[#F27D26]/80 text-black rounded-full text-xs font-bold transition cursor-pointer flex items-center gap-1.5"
+                  title="Exportar Imagem PNG de Alta Resolução"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  <span>Exportar PNG</span>
+                </button>
+              )}
+              <button
+                onClick={handleExportPDF}
+                className="px-4 py-1.5 bg-white/5 border border-white/10 hover:bg-white/10 text-white rounded-full text-xs font-bold transition cursor-pointer flex items-center gap-1.5"
+                title="Imprimir ou Salvar como PDF"
+              >
+                <FileDown className="w-3.5 h-3.5" />
+                <span>Exportar PDF</span>
+              </button>
+              <button
+                onClick={() => {
+                  window.location.href = '/admin';
+                }}
+                className="px-4 py-1.5 border border-[#F27D26]/20 hover:border-[#F27D26]/60 bg-transparent text-[#F27D26] hover:text-white rounded-full text-xs uppercase tracking-wider font-bold transition cursor-pointer"
+              >
+                Voltar ao Painel
+              </button>
+            </div>
           )}
         </div>
       </header>
@@ -571,9 +801,39 @@ export default function ProjecaoView() {
                 className="w-full h-full drop-shadow-[0_0_25px_rgba(242,125,38,0.05)] overflow-visible"
               >
                 {/* Background concentric orbit rings (represents Chapters/Time layers) */}
-                <circle cx={cx} cy={cy} r="100" fill="none" stroke="rgba(255,255,255,0.02)" strokeWidth="1" />
-                <circle cx={cx} cy={cy} r="180" fill="none" stroke="rgba(255,255,255,0.03)" strokeWidth="1.5" strokeDasharray="5 5" />
-                <circle cx={cx} cy={cy} r={radius} fill="none" stroke="rgba(242,125,38,0.08)" strokeWidth="2" strokeDasharray="20 10" />
+                {CHAPTERS.map((ch, idx) => {
+                  const chRadius = 80 + (ch.id * 22);
+                  const isCurrent = selectedChapterIndex === idx;
+                  return (
+                    <g key={`orbit-${ch.id}`} className="no-print">
+                      <circle
+                        cx={cx}
+                        cy={cy}
+                        r={chRadius}
+                        fill="none"
+                        stroke={isCurrent ? "rgba(242, 125, 38, 0.25)" : "rgba(255, 255, 255, 0.03)"}
+                        strokeWidth={isCurrent ? 1.5 : 1}
+                        strokeDasharray={isCurrent ? "none" : "3 6"}
+                        className="transition-all duration-500 cursor-pointer hover:stroke-[#F27D26]/40"
+                        onClick={() => setSelectedChapterIndex(idx)}
+                      />
+                      {isCurrent && (
+                        <text
+                          x={cx}
+                          y={cy - chRadius - 4}
+                          textAnchor="middle"
+                          fill="#F27D26"
+                          fontSize="7"
+                          fontFamily="sans-serif"
+                          className="pointer-events-none select-none tracking-wider font-bold"
+                        >
+                          C{ch.id}
+                        </text>
+                      )}
+                    </g>
+                  );
+                })}
+                <circle cx={cx} cy={cy} r={radius} fill="none" stroke="rgba(242,125,38,0.08)" strokeWidth="2" strokeDasharray="20 10" className="no-print" />
                 
                 {/* Mandala connecting branch ramifications */}
                 {mandalaNodes.map((node) => {
@@ -587,12 +847,10 @@ export default function ProjecaoView() {
 
                   let strokeColor = 'rgba(255,255,255,0.04)';
                   let strokeWidth = '1.5';
-                  let isGlowing = false;
 
                   if (isNodeSelected) {
                     strokeColor = '#F27D26';
                     strokeWidth = '3';
-                    isGlowing = true;
                   } else if (hasCurrentChapterAnswers) {
                     strokeColor = 'rgba(242,125,38,0.35)';
                     strokeWidth = '2';
@@ -616,7 +874,7 @@ export default function ProjecaoView() {
                       
                       {/* Interactive light pulse riding down the selected or active branch */}
                       {(isNodeSelected || (hasCurrentChapterAnswers && Math.random() > 0.4)) && (
-                        <circle r="4" fill="#F27D26" className="animate-ping">
+                        <circle r="4" fill="#F27D26" className="animate-ping no-print">
                           <animateMotion
                             path={`M ${cx} ${cy} L ${node.x} ${node.y}`}
                             dur={isNodeSelected ? "2.5s" : "4s"}
@@ -624,6 +882,51 @@ export default function ProjecaoView() {
                           />
                         </circle>
                       )}
+
+                      {/* Concentric interactive timeline dots along each participant's active branch */}
+                      {isNodeActive && CHAPTERS.map((ch, idx) => {
+                        const chRadius = 80 + (ch.id * 22);
+                        const sx = cx + chRadius * Math.cos(node.angle);
+                        const sy = cy + chRadius * Math.sin(node.angle);
+
+                        // Check if this participant answered this chapter
+                        const hasAnswer = node.participant
+                          ? Object.values((node.participant.answers && node.participant.answers[ch.id]) || {}).some(val => typeof val === 'string' && val.trim() !== '')
+                          : false;
+
+                        const isStepSelected = selectedChapterIndex === idx && isNodeSelected;
+                        const isStepCurrentChapter = selectedChapterIndex === idx;
+
+                        return (
+                          <g key={`mandala-step-${node.index}-${ch.id}`}>
+                            {/* Invisible click target */}
+                            <circle
+                              cx={sx}
+                              cy={sy}
+                              r="8"
+                              fill="transparent"
+                              className="cursor-pointer no-print"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (node.participant) {
+                                  setSelectedParticipantId(node.participant.id);
+                                  setSelectedChapterIndex(idx);
+                                }
+                              }}
+                            />
+                            {/* Visual Indicator Dot */}
+                            <circle
+                              cx={sx}
+                              cy={sy}
+                              r={isStepSelected ? 5.5 : (isStepCurrentChapter && hasAnswer ? 4.5 : 2.5)}
+                              fill={hasAnswer ? (isStepSelected ? "#FFFFFF" : "#F27D26") : "none"}
+                              stroke={hasAnswer ? "#F27D26" : "rgba(255,255,255,0.06)"}
+                              strokeWidth={isStepSelected ? 2 : (hasAnswer ? 1 : 0.5)}
+                              className="transition-all duration-300 pointer-events-none"
+                            />
+                          </g>
+                        );
+                      })}
                     </g>
                   );
                 })}
