@@ -192,7 +192,7 @@ export default function ProjecaoView() {
 
   // Filter participants who answered at least one question of this chapter
   const answeredParticipants = rawParticipants.filter((p) => {
-    const ans = p.answers[chapter.id];
+    const ans = p.answers ? p.answers[chapter.id] : null;
     if (!ans) return false;
     return Object.values(ans).some((val) => typeof val === 'string' && val.trim() !== '');
   });
@@ -203,7 +203,7 @@ export default function ProjecaoView() {
   const textResponses: Array<{ participantId: string; participantName: string; answers: string[] }> = [];
 
   answeredParticipants.forEach((p) => {
-    const ans = p.answers[chapter.id] || {};
+    const ans = (p.answers && p.answers[chapter.id]) || {};
     const texts: string[] = [];
     
     chapter.questions.forEach((q) => {
@@ -255,7 +255,7 @@ export default function ProjecaoView() {
 
   // Selected participant details (if clicked on mandala)
   const activeParticipant = rawParticipants.find(p => p.id === selectedParticipantId) || null;
-  const activeParticipantAnswers = activeParticipant ? activeParticipant.answers[chapter.id] || {} : {};
+  const activeParticipantAnswers = activeParticipant ? (activeParticipant.answers && activeParticipant.answers[chapter.id]) || {} : {};
 
   return (
     <div className="min-h-screen bg-[#050505] text-[#E0DED7] flex flex-col relative overflow-hidden select-none selection:bg-[#F27D26] selection:text-black">
@@ -582,7 +582,7 @@ export default function ProjecaoView() {
                   
                   // Answers check for current chapter
                   const hasCurrentChapterAnswers = node.participant 
-                    ? Object.values(node.participant.answers[chapter.id] || {}).some(val => typeof val === 'string' && val.trim() !== '')
+                    ? Object.values((node.participant.answers && node.participant.answers[chapter.id]) || {}).some(val => typeof val === 'string' && val.trim() !== '')
                     : false;
 
                   let strokeColor = 'rgba(255,255,255,0.04)';
@@ -702,7 +702,7 @@ export default function ProjecaoView() {
                   const isNodeSelected = selectedParticipantId === node.participant?.id;
                   
                   const hasCurrentChapterAnswers = node.participant 
-                    ? Object.values(node.participant.answers[chapter.id] || {}).some(val => typeof val === 'string' && val.trim() !== '')
+                    ? Object.values((node.participant.answers && node.participant.answers[chapter.id]) || {}).some(val => typeof val === 'string' && val.trim() !== '')
                     : false;
 
                   // Styling determinations
@@ -1042,7 +1042,7 @@ export default function ProjecaoView() {
 
                         // Check if this chapter was submitted/answered by this participant
                         const hasAnswer = node.participant 
-                          ? Object.values(node.participant.answers[chapterId] || {}).some(val => typeof val === 'string' && val.trim() !== '')
+                          ? Object.values((node.participant.answers && node.participant.answers[chapterId]) || {}).some(val => typeof val === 'string' && val.trim() !== '')
                           : false;
 
                         return (

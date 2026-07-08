@@ -198,7 +198,7 @@ export default function TimelineAssembly({
             <AnimatePresence>
               {CHAPTERS.filter(ch => ch.id <= 7).map((ch) => {
                 const isVisible = visibleItems.includes(ch.id);
-                const ans = participant.answers[ch.id] || {};
+                const ans = (participant?.answers && participant.answers[ch.id]) || {};
 
                 if (!isVisible) return null;
 
@@ -262,7 +262,7 @@ export default function TimelineAssembly({
 
               {/* Today's Blank or Completed Chapter 8 Assembly */}
               {visibleItems.includes(8) && (
-                participant.answers[8]?.q8_experience ? (
+                (participant?.answers?.[8]?.q8_experience) ? (
                   <motion.div
                     initial={{ opacity: 0, x: -20 }}
                     animate={{ opacity: 1, x: 0 }}
@@ -284,7 +284,7 @@ export default function TimelineAssembly({
                       <div className="space-y-4 font-serif text-lg italic text-[#A8A8A8] leading-relaxed">
                         <h4 className="text-white/30 font-sans text-[10px] uppercase tracking-widest">Como foi sua experiência?</h4>
                         <p className="border-l border-[#F27D26]/30 pl-4 py-1 text-white">
-                          "{participant.answers[8].q8_experience}"
+                          "{participant.answers[8]?.q8_experience || ''}"
                         </p>
                       </div>
                     </div>

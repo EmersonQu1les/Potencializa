@@ -41,7 +41,7 @@ export default function DiarioView({ participant, onReset }: DiarioViewProps) {
     text += `--------------------------------------------------\n\n`;
 
     CHAPTERS.forEach((ch) => {
-      const ans = participant.answers[ch.id] || {};
+      const ans = (participant?.answers && participant.answers[ch.id]) || {};
       text += `CAPÍTULO ${ch.id}: ${ch.title.toUpperCase()} (${ch.dateLabel || ''})\n`;
       text += `--------------------------------------------------\n`;
       
@@ -430,7 +430,7 @@ export default function DiarioView({ participant, onReset }: DiarioViewProps) {
         {/* Written Chapters Section */}
         <section className="space-y-24">
           {CHAPTERS.map((ch) => {
-            const ans = participant.answers[ch.id] || {};
+            const ans = (participant?.answers && participant.answers[ch.id]) || {};
 
             return (
               <article key={ch.id} className="print-page-break print-card relative">

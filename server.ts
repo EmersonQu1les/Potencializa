@@ -112,11 +112,22 @@ async function syncFromFirebase() {
         projectionReleased = data.projectionReleased;
       }
       if (data.participants) {
-        // Merge participants safely to avoid overwriting newer local heartbeats
+        // Merge participants safely from Firebase
         for (const [id, p] of Object.entries(data.participants)) {
           const localP = participants[id];
-          if (!localP || p.lastHeartbeat >= localP.lastHeartbeat) {
+          if (!localP) {
             participants[id] = p;
+          } else {
+            // Overwrite status/names/answers with values from Firebase
+            localP.name = p.name;
+            localP.photo = p.photo;
+            localP.status = p.status;
+            localP.currentChapterSubmitted = p.currentChapterSubmitted;
+            localP.answers = p.answers || {};
+            
+            // Keep the max heartbeat so we do not lose active status
+            localP.lastHeartbeat = Math.max(localP.lastHeartbeat, p.lastHeartbeat || 0);
+            localP.active = localP.active || p.active;
           }
         }
         // Remove participants that were deleted in Firebase
