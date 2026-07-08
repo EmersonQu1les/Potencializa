@@ -19,7 +19,9 @@ import {
   MessageSquare, 
   Info,
   ExternalLink,
-  ChevronRight
+  ChevronRight,
+  Sun,
+  Moon
 } from 'lucide-react';
 
 interface ProjectionData {
@@ -45,7 +47,22 @@ export default function ProjecaoView() {
   const [isAdminMode, setIsAdminMode] = useState(false);
   
   // Custom states for Mandala
-  const [viewMode, setViewMode] = useState<'mandala' | 'list'>('mandala');
+  const [viewMode, setViewMode] = useState<'mandala' | 'list' | 'diagram'>('mandala');
+  const [theme, setTheme] = useState<'dark' | 'light'>(() => {
+    return (localStorage.getItem('pot_theme') as 'dark' | 'light') || 'dark';
+  });
+
+  useEffect(() => {
+    if (theme === 'light') {
+      document.body.classList.add('light-theme');
+      document.documentElement.classList.add('light-theme');
+    } else {
+      document.body.classList.remove('light-theme');
+      document.documentElement.classList.remove('light-theme');
+    }
+    localStorage.setItem('pot_theme', theme);
+  }, [theme]);
+
   const [selectedParticipantId, setSelectedParticipantId] = useState<string | null>(null);
   const [isAutoplay, setIsAutoplay] = useState(false);
   const autoplayTimer = useRef<NodeJS.Timeout | null>(null);
@@ -296,6 +313,17 @@ export default function ProjecaoView() {
               <span>Mandala</span>
             </button>
             <button
+              onClick={() => setViewMode('diagram')}
+              className={`px-4 py-1.5 rounded-full text-xs font-sans tracking-wide transition cursor-pointer uppercase flex items-center space-x-1.5 ${
+                viewMode === 'diagram'
+                  ? 'bg-[#F27D26] text-black font-bold'
+                  : 'text-white/40 hover:text-white/80'
+              }`}
+            >
+              <Compass className="w-3 h-3" />
+              <span>Diagrama</span>
+            </button>
+            <button
               onClick={() => setViewMode('list')}
               className={`px-4 py-1.5 rounded-full text-xs font-sans tracking-wide transition cursor-pointer uppercase flex items-center space-x-1.5 ${
                 viewMode === 'list'
@@ -307,6 +335,20 @@ export default function ProjecaoView() {
               <span>Relatos</span>
             </button>
           </div>
+
+          {/* Theme Toggle Button */}
+          <button
+            onClick={() => setTheme(prev => prev === 'dark' ? 'light' : 'dark')}
+            className="p-1.5 rounded-full bg-white/5 border border-white/5 text-white/50 hover:text-white hover:border-[#F27D26]/40 hover:bg-[#F27D26]/10 transition duration-300 cursor-pointer"
+            title={theme === 'dark' ? 'Alternar para Modo Claro' : 'Alternar para Modo Escuro'}
+            aria-label="Alternar Tema"
+          >
+            {theme === 'dark' ? (
+              <Sun className="w-4 h-4 text-amber-400" />
+            ) : (
+              <Moon className="w-4 h-4 text-indigo-400" />
+            )}
+          </button>
 
           <div className="flex items-center space-x-2 bg-white/5 border border-white/5 px-4 py-1.5 rounded-full text-xs text-white/60">
             <Users className="w-3.5 h-3.5 text-[#F27D26]" />
@@ -514,7 +556,7 @@ export default function ProjecaoView() {
               </div>
             )}
           </div>
-        ) : (
+        ) : viewMode === 'mandala' ? (
           /* Mandala Cosmic Interactive Diagram Layout */
           <div className="max-w-7xl mx-auto w-full flex-1 flex flex-col lg:flex-row items-center justify-center gap-12 py-4">
             
@@ -953,6 +995,335 @@ export default function ProjecaoView() {
               </AnimatePresence>
             </div>
 
+          </div>
+        ) : (
+          /* Diagram view mode: Center "Potencializa" radiating timelines */
+          <div className="max-w-7xl mx-auto w-full flex-1 flex flex-col lg:flex-row items-center justify-center gap-12 py-4">
+            
+            {/* Left/Main Side: SVG Diagram */}
+            <div className="flex-1 flex items-center justify-center relative max-w-[620px] lg:max-w-[700px] w-full aspect-square bg-[#050505]/40 rounded-full border border-white/5 p-4">
+              <div className="absolute inset-0 bg-radial-gradient from-[#F27D26]/5 to-transparent rounded-full blur-3xl pointer-events-none" />
+              
+              <svg 
+                viewBox="0 0 800 800" 
+                className="w-full h-full drop-shadow-[0_0_25px_rgba(242,125,38,0.05)] overflow-visible"
+              >
+                {/* Radiation connection lines */}
+                {mandalaNodes.map((node) => {
+                  const isNodeActive = !!node.participant;
+                  const isNodeSelected = selectedParticipantId === node.participant?.id;
+                  if (!isNodeActive) return null;
+
+                  let strokeColor = isNodeSelected ? '#F27D26' : 'rgba(255,255,255,0.12)';
+                  let strokeWidth = isNodeSelected ? '3' : '1.5';
+
+                  return (
+                    <g key={`diag-line-${node.index}`}>
+                      <line
+                        x1={cx}
+                        y1={cy}
+                        x2={node.x}
+                        y2={node.y}
+                        stroke={strokeColor}
+                        strokeWidth={strokeWidth}
+                        className="transition-all duration-500 ease-in-out"
+                      />
+                      
+                      {/* Timeline steps (dots) along the ray/branch */}
+                      {Array.from({ length: 8 }).map((_, stepIdx) => {
+                        const chapterId = stepIdx + 1;
+                        // Calculate coordinate along the line
+                        const startRadius = 90; // Just outside the center circle
+                        const stepDistance = (radius - startRadius) / 8;
+                        const currRadius = startRadius + (stepIdx + 1) * stepDistance;
+                        
+                        const sx = cx + currRadius * Math.cos(node.angle);
+                        const sy = cy + currRadius * Math.sin(node.angle);
+
+                        // Check if this chapter was submitted/answered by this participant
+                        const hasAnswer = node.participant 
+                          ? Object.values(node.participant.answers[chapterId] || {}).some(val => typeof val === 'string' && val.trim() !== '')
+                          : false;
+
+                        return (
+                          <g key={`diag-step-${node.index}-${chapterId}`}>
+                            <circle
+                              cx={sx}
+                              cy={sy}
+                              r={isNodeSelected ? "6" : "4.5"}
+                              fill={hasAnswer ? "#F27D26" : "rgba(5,5,5,0.9)"}
+                              stroke={hasAnswer ? "#FFFFFF" : "rgba(255,255,255,0.2)"}
+                              strokeWidth={isNodeSelected ? "1.5" : "1"}
+                              className="transition-all duration-300 hover:scale-150 cursor-pointer"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setSelectedParticipantId(node.participant!.id);
+                                setSelectedChapterIndex(stepIdx);
+                              }}
+                            >
+                              <title>{`Capítulo ${chapterId}: ${hasAnswer ? 'Preenchido' : 'Em branco'}`}</title>
+                            </circle>
+                          </g>
+                        );
+                      })}
+                    </g>
+                  );
+                })}
+
+                {/* Center Node of the diagram: POTENCIALIZA */}
+                <g className="cursor-pointer select-none" onClick={() => setSelectedParticipantId(null)}>
+                  <circle 
+                    cx={cx} 
+                    cy={cy} 
+                    r="90" 
+                    fill="url(#centerGlowDiag)" 
+                    className="animate-pulse" 
+                    style={{ animationDuration: '4s' }}
+                  />
+                  <circle 
+                    cx={cx} 
+                    cy={cy} 
+                    r="75" 
+                    fill="#050505" 
+                    stroke="#F27D26" 
+                    strokeWidth="2" 
+                  />
+                  <text
+                    x={cx}
+                    y={cy - 6}
+                    textAnchor="middle"
+                    fill="#FFFFFF"
+                    fontSize="10"
+                    fontWeight="900"
+                    fontFamily="sans-serif"
+                    letterSpacing="6"
+                    className="uppercase"
+                  >
+                    DIAGRAMA
+                  </text>
+                  <text
+                    x={cx}
+                    y={cy + 14}
+                    textAnchor="middle"
+                    fill="#F27D26"
+                    fontSize="13"
+                    fontWeight="bold"
+                    fontFamily="serif"
+                    letterSpacing="4"
+                    className="font-bold tracking-widest italic animate-pulse"
+                  >
+                    POTENCIALIZA
+                  </text>
+                  <text
+                    x={cx}
+                    y={cy + 30}
+                    textAnchor="middle"
+                    fill="rgba(255,255,255,0.3)"
+                    fontSize="7"
+                    fontFamily="sans-serif"
+                    letterSpacing="4"
+                  >
+                    LINHA DO TEMPO
+                  </text>
+                </g>
+
+                {/* Outer Participant Avatars */}
+                {mandalaNodes.map((node) => {
+                  const isNodeActive = !!node.participant;
+                  const isNodeSelected = selectedParticipantId === node.participant?.id;
+                  if (!isNodeActive) return null;
+
+                  const nodeRadius = isNodeSelected ? '20' : '15';
+                  const nameColor = isNodeSelected ? '#F27D26' : '#FFFFFF';
+                  const nameWeight = isNodeSelected ? 'font-bold' : 'font-light';
+
+                  const lx = cx + (radius + 45) * Math.cos(node.angle);
+                  const ly = cy + (radius + 45) * Math.sin(node.angle);
+
+                  let textAnchor = 'middle';
+                  if (Math.cos(node.angle) > 0.15) textAnchor = 'start';
+                  if (Math.cos(node.angle) < -0.15) textAnchor = 'end';
+
+                  return (
+                    <g 
+                      key={`diag-avatar-${node.index}`} 
+                      className="group cursor-pointer"
+                      onClick={() => setSelectedParticipantId(node.participant!.id)}
+                    >
+                      {isNodeSelected && (
+                        <circle
+                          cx={node.x}
+                          cy={node.y}
+                          r="30"
+                          fill="none"
+                          stroke="#F27D26"
+                          strokeWidth="1"
+                          className="animate-ping opacity-40"
+                        />
+                      )}
+
+                      <image
+                        x={node.x - Number(nodeRadius)}
+                        y={node.y - Number(nodeRadius)}
+                        width={Number(nodeRadius) * 2}
+                        height={Number(nodeRadius) * 2}
+                        href={getAvatarSrc(node.participant.photo, node.participant.name)}
+                        style={{ clipPath: 'circle(50% at 50% 50%)' }}
+                        className="transition-all duration-500 ease-in-out group-hover:scale-110"
+                      />
+                      <circle
+                        cx={node.x}
+                        cy={node.y}
+                        r={nodeRadius}
+                        fill="none"
+                        stroke={isNodeSelected ? '#FFFFFF' : 'rgba(255,255,255,0.4)'}
+                        strokeWidth="1.5"
+                        className="transition-all duration-500 pointer-events-none"
+                      />
+
+                      <text
+                        x={lx}
+                        y={ly + 3}
+                        textAnchor={textAnchor}
+                        fill={nameColor}
+                        fontSize="11"
+                        fontFamily="serif"
+                        className={`transition-colors duration-500 ${nameWeight} tracking-wide select-none`}
+                      >
+                        {node.participant!.name.split(' ')[0]}
+                      </text>
+                    </g>
+                  );
+                })}
+
+                <defs>
+                  <radialGradient id="centerGlowDiag" cx="50%" cy="50%" r="50%">
+                    <stop offset="0%" stopColor="#F27D26" stopOpacity="0.4" />
+                    <stop offset="100%" stopColor="#050505" stopOpacity="0" />
+                  </radialGradient>
+                </defs>
+              </svg>
+            </div>
+
+            {/* Right/Control Side: High-fidelity details card */}
+            <div className="w-full lg:w-[420px] shrink-0 self-stretch flex flex-col justify-start">
+              <AnimatePresence mode="wait">
+                {activeParticipant ? (
+                  <motion.div
+                    key={activeParticipant.id + chapter.id}
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -20 }}
+                    transition={{ duration: 0.4 }}
+                    className="bg-[#3a1510]/5 border border-[#F27D26]/20 rounded-3xl p-6 flex flex-col justify-between h-full backdrop-blur-md relative overflow-hidden text-left"
+                  >
+                    <div className="absolute top-0 left-0 w-1 h-full bg-[#F27D26]" />
+                    <div className="absolute top-0 right-0 w-32 h-32 bg-[#F27D26]/5 rounded-full blur-2xl pointer-events-none" />
+
+                    <div>
+                      <div className="flex items-center justify-between border-b border-white/5 pb-4 mb-4">
+                        <div>
+                          <p className="text-[10px] font-sans text-[#F27D26] tracking-widest uppercase font-bold">
+                            Colaborador no Diagrama
+                          </p>
+                          <h3 className="text-xl font-serif italic text-white font-bold leading-tight mt-1">
+                            {activeParticipant.name}
+                          </h3>
+                        </div>
+                        <div className="px-2.5 py-1 bg-white/5 border border-white/10 rounded-full text-[10px] font-mono text-white/50 uppercase">
+                          ID: {activeParticipant.id}
+                        </div>
+                      </div>
+
+                      <div className="space-y-5">
+                        <div className="bg-white/[0.02] border border-white/5 rounded-xl p-3 mb-2">
+                          <p className="text-[10px] font-sans text-white/40 uppercase tracking-wider">Capítulo em foco</p>
+                          <p className="text-sm font-serif italic text-[#F27D26] mt-0.5">Capítulo {chapter.id}: {chapter.title}</p>
+                        </div>
+                        {chapter.questions.map((q) => {
+                          const val = activeParticipantAnswers[q.id];
+                          const hasAnswer = val && typeof val === 'string' && val.trim() !== '';
+
+                          return (
+                            <div key={q.id} className="space-y-1.5">
+                              <span className="text-[10px] font-sans font-semibold text-white/40 uppercase tracking-wider block">
+                                {q.label}
+                              </span>
+                              
+                              {hasAnswer ? (
+                                <p className="text-white text-sm font-serif italic leading-relaxed pl-2 border-l border-[#F27D26]/30">
+                                  "{val}"
+                                </p>
+                              ) : (
+                                <p className="text-white/20 text-xs italic font-sans pl-2">
+                                  Sem registro para esta pergunta neste capítulo.
+                                </p>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    <div className="pt-6 border-t border-white/5 mt-6 flex flex-col space-y-3">
+                      <div className="flex items-center justify-between text-[10px] font-mono text-white/40">
+                        <span>Progresso Geral do Diário</span>
+                        <span>{activeParticipant.currentChapterSubmitted} de 8 Capítulos</span>
+                      </div>
+                      <div className="w-full h-1 bg-white/5 rounded-full overflow-hidden">
+                        <div 
+                          className="h-full bg-[#F27D26] transition-all duration-500 rounded-full"
+                          style={{ width: `${(activeParticipant.currentChapterSubmitted / 8) * 100}%` }}
+                        />
+                      </div>
+
+                      <div className="flex items-center justify-between pt-2">
+                        <button
+                          onClick={() => setSelectedParticipantId(null)}
+                          className="text-xs text-white/50 hover:text-white font-sans transition cursor-pointer"
+                        >
+                          Limpar Seleção
+                        </button>
+                        <span className="text-[9px] font-sans uppercase tracking-widest text-[#F27D26]">
+                          Trajetória Estelar
+                        </span>
+                      </div>
+                    </div>
+                  </motion.div>
+                ) : (
+                  <motion.div
+                    key="no-selection-diag"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    className="border border-white/5 bg-[#0b0b0b]/60 rounded-3xl p-8 flex flex-col justify-center items-center text-center h-full min-h-[300px]"
+                  >
+                    <Compass className="w-12 h-12 text-[#F27D26]/40 animate-pulse mb-4" />
+                    <h3 className="text-lg font-serif italic text-white mb-2">
+                      Diagrama de Ramificações
+                    </h3>
+                    <p className="text-xs text-white/55 font-sans leading-relaxed max-w-sm mb-6">
+                      Ao centro, a palavra Potencializa. Ao redor, saem as ramificações de cada colaborador. Clique nas esferas ou nos pequenos pontos brilhantes de cada capítulo para ver as respostas.
+                    </p>
+
+                    <div className="w-full grid grid-cols-2 gap-3 pt-4 border-t border-white/5 text-left">
+                      <div className="bg-white/[0.02] p-3 rounded-2xl border border-white/5">
+                        <p className="text-[9px] text-white/40 font-sans uppercase tracking-wider">Total Presentes</p>
+                        <p className="text-2xl font-serif italic text-white font-bold mt-1">
+                          {rawParticipants.length} <span className="text-xs text-white/30 font-sans font-light">/ 19</span>
+                        </p>
+                      </div>
+                      <div className="bg-white/[0.02] p-3 rounded-2xl border border-white/5">
+                        <p className="text-[9px] text-white/40 font-sans uppercase tracking-wider">Colaboraram Neste</p>
+                        <p className="text-2xl font-serif italic text-[#F27D26] font-bold mt-1">
+                          {answeredParticipants.length}
+                        </p>
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
           </div>
         )}
       </main>

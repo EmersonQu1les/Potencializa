@@ -30,7 +30,7 @@ export default function TimelineAssembly({
     if (currentChapter === 9) {
       // Staggered reveal of each chapter card
       // Chapters 1 to 7
-      CHAPTERS.forEach((ch, idx) => {
+      CHAPTERS.filter(ch => ch.id <= 7).forEach((ch, idx) => {
         setTimeout(() => {
           setVisibleItems((prev) => [...prev, ch.id]);
           // Scroll smoothly to bottom as items appear
@@ -46,7 +46,7 @@ export default function TimelineAssembly({
       });
 
       // After all chapters are revealed, show the Blank chapter "09 de Julho"
-      const revealTodayTimeout = CHAPTERS.length * 2800;
+      const revealTodayTimeout = 7 * 2800;
       setTimeout(() => {
         setVisibleItems((prev) => [...prev, 8]);
         setTimeout(() => {
@@ -131,7 +131,7 @@ export default function TimelineAssembly({
             A página está em branco...
             <br />
             <span className="text-sm font-sans text-white/40 block mt-4 not-italic">
-              Sinta a força que emana de cada palavra que você já semeou nesta manhã.
+              Sinta a força que emana de cada palavra que você já semeou no dia de hoje.
             </span>
           </motion.p>
 
@@ -196,7 +196,7 @@ export default function TimelineAssembly({
           {/* Timeline cards stack */}
           <div className="space-y-16 pl-10 md:pl-16 relative">
             <AnimatePresence>
-              {CHAPTERS.map((ch) => {
+              {CHAPTERS.filter(ch => ch.id <= 7).map((ch) => {
                 const isVisible = visibleItems.includes(ch.id);
                 const ans = participant.answers[ch.id] || {};
 
@@ -260,31 +260,60 @@ export default function TimelineAssembly({
                 );
               })}
 
-              {/* Today's Blank Node Assembly */}
+              {/* Today's Blank or Completed Chapter 8 Assembly */}
               {visibleItems.includes(8) && (
-                <motion.div
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ duration: 1.5, ease: "easeOut" }}
-                  className="relative"
-                >
-                  <div className="absolute -left-[50px] md:-left-[74px] top-2 flex items-center justify-center">
-                    <div className="w-5 h-5 rounded-full bg-[#050505] border border-white/10 flex items-center justify-center">
-                      <div className="w-2 h-2 rounded-full bg-white/20 animate-pulse" />
+                participant.answers[8]?.q8_experience ? (
+                  <motion.div
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ duration: 1.5, ease: "easeOut" }}
+                    className="relative"
+                  >
+                    <div className="absolute -left-[50px] md:-left-[74px] top-2 flex items-center justify-center">
+                      <div className="w-5 h-5 rounded-full bg-[#050505] border border-[#F27D26] flex items-center justify-center">
+                        <div className="w-2 h-2 rounded-full bg-[#F27D26] animate-pulse" />
+                      </div>
                     </div>
-                  </div>
 
-                  <div className="bg-transparent border border-white/5 border-dashed rounded-2xl p-6 backdrop-blur-md">
-                    <div className="flex items-center space-x-2 text-white/30 font-sans text-[11px] uppercase tracking-widest mb-3">
-                      <span>09 de Julho de 2026</span>
-                      <span>•</span>
-                      <span>Hoje</span>
+                    <div className="bg-[#3a1510]/5 border border-[#F27D26]/20 rounded-2xl p-6 backdrop-blur-md shadow-xl">
+                      <div className="flex items-center space-x-2 text-[#F27D26] font-sans text-[11px] uppercase tracking-widest mb-4">
+                        <span>09 de Julho de 2026</span>
+                        <span>•</span>
+                        <span>Capítulo 8: A Experiência</span>
+                      </div>
+                      <div className="space-y-4 font-serif text-lg italic text-[#A8A8A8] leading-relaxed">
+                        <h4 className="text-white/30 font-sans text-[10px] uppercase tracking-widest">Como foi sua experiência?</h4>
+                        <p className="border-l border-[#F27D26]/30 pl-4 py-1 text-white">
+                          "{participant.answers[8].q8_experience}"
+                        </p>
+                      </div>
                     </div>
-                    <p className="font-serif italic text-lg text-white/40 leading-relaxed">
-                      Este capítulo permanece em aberto... Porque hoje nós escrevemos o amanhã.
-                    </p>
-                  </div>
-                </motion.div>
+                  </motion.div>
+                ) : (
+                  <motion.div
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ duration: 1.5, ease: "easeOut" }}
+                    className="relative"
+                  >
+                    <div className="absolute -left-[50px] md:-left-[74px] top-2 flex items-center justify-center">
+                      <div className="w-5 h-5 rounded-full bg-[#050505] border border-white/10 flex items-center justify-center">
+                        <div className="w-2 h-2 rounded-full bg-white/20 animate-pulse" />
+                      </div>
+                    </div>
+
+                    <div className="bg-transparent border border-white/5 border-dashed rounded-2xl p-6 backdrop-blur-md">
+                      <div className="flex items-center space-x-2 text-white/30 font-sans text-[11px] uppercase tracking-widest mb-3">
+                        <span>09 de Julho de 2026</span>
+                        <span>•</span>
+                        <span>Capítulo 8</span>
+                      </div>
+                      <p className="font-serif italic text-lg text-[#F27D26]/80 leading-relaxed">
+                        O Capítulo 8 ainda é uma página em branco...
+                      </p>
+                    </div>
+                  </motion.div>
+                )
               )}
             </AnimatePresence>
           </div>
@@ -307,7 +336,7 @@ export default function TimelineAssembly({
                     transition={{ duration: 1.5 }}
                     className="text-[#E0DED7] font-serif text-2xl italic font-light leading-relaxed"
                   >
-                    Durante toda a manhã vocês escreveram uma história.
+                    Durante o dia de hoje vocês escreveram uma história.
                   </motion.p>
 
                   {closureStep >= 1 && (

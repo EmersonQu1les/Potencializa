@@ -192,6 +192,20 @@ export const CHAPTERS: ChapterDef[] = [
         type: "textarea"
       }
     ]
+  },
+  {
+    id: 8,
+    title: "A Experiência",
+    subtitle: "A vivência e o impacto no dia seguinte",
+    dateLabel: "09 de Julho de 2026",
+    questions: [
+      {
+        id: "q8_experience",
+        label: "Como foi sua experiência?",
+        placeholder: "Compartilhe como foi vivenciar essa transformação e qual o impacto real no seu dia a dia...",
+        type: "textarea"
+      }
+    ]
   }
 ];
 

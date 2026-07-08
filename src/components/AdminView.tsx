@@ -309,7 +309,7 @@ export default function AdminView() {
                 </button>
               </div>
 
-              {/* Reflective Chapters 1 to 7 */}
+              {/* Reflective Chapters 1 to 8 */}
               {CHAPTERS.map((ch) => {
                 const isActive = session?.currentChapter === ch.id;
                 
@@ -349,25 +349,6 @@ export default function AdminView() {
                   </div>
                 );
               })}
-
-              {/* Chapter 8: Ainda em Branco (9 Julho) */}
-              <div className={`flex flex-col md:flex-row md:items-center justify-between p-4 rounded-2xl border transition duration-300 ${
-                session?.currentChapter === 8
-                  ? 'bg-[#3a1510]/15 border-[#F27D26]/40'
-                  : 'bg-transparent border-white/5'
-              }`}>
-                <div>
-                  <h3 className="text-sm font-semibold text-white">Capítulo 8: Ainda em Branco (09/07)</h3>
-                  <p className="text-white/40 text-xs mt-0.5">Mostra apenas a data e a animação reflexiva.</p>
-                </div>
-                <button
-                  onClick={() => handleControlChapter(8)}
-                  disabled={session?.currentChapter === 8}
-                  className="mt-3 md:mt-0 px-5 py-2.5 rounded-full text-xs font-bold uppercase tracking-wider transition cursor-pointer disabled:bg-[#F27D26] disabled:text-black bg-transparent border border-white/10 hover:border-[#F27D26] text-white"
-                >
-                  {session?.currentChapter === 8 ? 'Ativo' : 'Liberar'}
-                </button>
-              </div>
 
               {/* Timeline Auto Compilation Stage */}
               <div className={`flex flex-col md:flex-row md:items-center justify-between p-4 rounded-2xl border transition duration-300 ${

@@ -107,7 +107,9 @@ export default function ChapterView({
           </h1>
 
           <p className="text-[#A8A8A8] font-sans font-light text-base leading-relaxed mb-10 max-w-sm">
-            Sua resposta foi selada na história. Aguarde em silêncio. O grupo ainda está caminhando na mesma direção.
+            {chapter.id === 7 
+              ? "O Capítulo 8 será talhado amanhã, enquanto isso vamos ver o quanto nos transformamos nesta jornada?"
+              : "Sua resposta foi selada na história. Aguarde em silêncio. O grupo ainda está caminhando na mesma direção."}
           </p>
 
           {/* Group progress info block */}

@@ -397,7 +397,7 @@ app.get('/api/admin/summary', (req, res) => {
   const activeConnected = allList.filter(p => p.active);
   
   let completedCount = 0;
-  if (currentChapter >= 1 && currentChapter <= 7) {
+  if (currentChapter >= 1 && currentChapter <= 8) {
     completedCount = activeConnected.filter(p => p.currentChapterSubmitted >= currentChapter).length;
   }
 
@@ -424,7 +424,7 @@ app.post('/api/admin/control', async (req, res) => {
   // Reset participant statuses to 'idle' if they are transitioning to a new active chapter
   const allList = Object.values(participants);
   for (const p of allList) {
-    if (currentChapter >= 1 && currentChapter <= 7) {
+    if (currentChapter >= 1 && currentChapter <= 8) {
       if (p.currentChapterSubmitted < currentChapter) {
         p.status = 'idle';
       } else {

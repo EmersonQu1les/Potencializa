@@ -681,8 +681,8 @@ export default function App() {
       );
     }
 
-    // 4. Active Chapters 1 to 7
-    if (activeChapterId >= 1 && activeChapterId <= 7) {
+    // 4. Active Chapters 1 to 8
+    if (activeChapterId >= 1 && activeChapterId <= 8) {
       const chapDef = CHAPTERS.find((c) => c.id === activeChapterId);
       if (chapDef) {
         return (
@@ -699,8 +699,8 @@ export default function App() {
       }
     }
 
-    // 5. Chapter 8: Ainda em Branco & 9: Timeline auto compiler assembly
-    if (activeChapterId === 8 || activeChapterId === 9) {
+    // 5. Chapter 9: Timeline auto compiler assembly
+    if (activeChapterId === 9) {
       return (
         <TimelineAssembly
           participant={participant}
