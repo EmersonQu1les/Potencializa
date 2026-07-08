@@ -18,7 +18,7 @@ export default function AberturaView({ onComplete }: AberturaProps) {
     // Stage 0: Show logo & initial pulse (0 to 3s)
     // Stage 1: "Existem caminhos que encontramos." (3s to 6s)
     // Stage 2: "Existem caminhos que construímos." (6s to 9s)
-    // Stage 3: "Esta manhã é sobre um deles." (9s onwards, reveals button)
+    // Stage 3: "O dia hoje é sobre um deles." (9s onwards, reveals button)
     
     const t1 = setTimeout(() => setStep(1), 3000);
     const t2 = setTimeout(() => setStep(2), 6500);
@@ -99,7 +99,7 @@ export default function AberturaView({ onComplete }: AberturaProps) {
                 transition={{ duration: 2, ease: "easeOut" }}
                 className="text-[#E0DED7]/60 font-serif text-lg font-light italic tracking-wide pt-4"
               >
-                Esta manhã é sobre um deles.
+                O dia hoje é sobre um deles.
               </motion.p>
             )}
           </AnimatePresence>

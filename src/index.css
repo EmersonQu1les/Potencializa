@@ -16,3 +16,140 @@ html, body {
   scrollbar-width: none;
   background-color: #050505;
 }
+
+/* Light Mode Theme Overrides */
+html.light-theme, body.light-theme {
+  background-color: #FCFBF9 !important;
+  color: #1A1915 !important;
+}
+
+/* Override background colors */
+.light-theme .bg-\[\#050505\],
+.light-theme .bg-zinc-950 {
+  background-color: #FCFBF9 !important;
+}
+
+.light-theme .bg-\[\#050505\]\/95 {
+  background-color: rgba(252, 251, 249, 0.95) !important;
+}
+
+.light-theme .bg-\[\#050505\]\/80 {
+  background-color: rgba(252, 251, 249, 0.8) !important;
+}
+
+.light-theme .bg-black\/40 {
+  background-color: rgba(255, 255, 255, 0.6) !important;
+}
+
+.light-theme .bg-black\/75 {
+  background-color: rgba(255, 255, 255, 0.85) !important;
+}
+
+.light-theme .bg-white\/\[0\.02\] {
+  background-color: rgba(0, 0, 0, 0.02) !important;
+}
+
+.light-theme .bg-[#3a1510]/5 {
+  background-color: rgba(242, 125, 38, 0.05) !important;
+}
+
+/* Text color overrides */
+.light-theme .text-\[\#E0DED7\] {
+  color: #1A1915 !important;
+}
+
+.light-theme .text-\[\#E0DED7\]\/60 {
+  color: rgba(26, 25, 21, 0.6) !important;
+}
+
+.light-theme .text-white {
+  color: #1A1915 !important;
+}
+
+.light-theme .text-\[\#A8A8A8\] {
+  color: #4A4945 !important;
+}
+
+.light-theme .text-zinc-400 {
+  color: #4A4945 !important;
+}
+
+.light-theme .text-white\/40 {
+  color: rgba(26, 25, 21, 0.4) !important;
+}
+
+.light-theme .text-white\/50 {
+  color: rgba(26, 25, 21, 0.5) !important;
+}
+
+.light-theme .text-white\/60 {
+  color: rgba(26, 25, 21, 0.6) !important;
+}
+
+.light-theme .text-white\/80 {
+  color: rgba(26, 25, 21, 0.8) !important;
+}
+
+.light-theme .placeholder\:text-white::placeholder {
+  color: rgba(0, 0, 0, 0.3) !important;
+}
+
+.light-theme .placeholder\:text-white\/40::placeholder {
+  color: rgba(0, 0, 0, 0.25) !important;
+}
+
+.light-theme .focus\:text-white:focus {
+  color: #1A1915 !important;
+}
+
+/* Border overrides */
+.light-theme .border-white\/10 {
+  border-color: rgba(0, 0, 0, 0.12) !important;
+}
+
+.light-theme .border-white\/5 {
+  border-color: rgba(0, 0, 0, 0.06) !important;
+}
+
+.light-theme .border-white\/15 {
+  border-color: rgba(0, 0, 0, 0.15) !important;
+}
+
+/* Floating controls override */
+.light-theme #btn_edit_profile,
+.light-theme #btn_theme_toggle,
+.light-theme #btn_admin_gear {
+  background-color: rgba(255, 255, 255, 0.9) !important;
+  border-color: rgba(0, 0, 0, 0.1) !important;
+  color: #1A1915 !important;
+}
+
+.light-theme #btn_edit_profile:hover,
+.light-theme #btn_theme_toggle:hover,
+.light-theme #btn_admin_gear:hover {
+  background-color: rgba(242, 125, 38, 0.08) !important;
+  border-color: rgba(242, 125, 38, 0.3) !important;
+}
+
+/* Modals */
+.light-theme .bg-\[\#050505\] {
+  background-color: #FCFBF9 !important;
+}
+
+/* Timeline/Chapters Custom Adjustments */
+.light-theme .bg-zinc-900 {
+  background-color: #F0EDE6 !important;
+}
+
+.light-theme .text-red-400 {
+  color: #DC2626 !important;
+}
+
+.light-theme .bg-red-500\/5 {
+  background-color: rgba(220, 38, 38, 0.05) !important;
+}
+
+.light-theme .border-red-500\/20 {
+  border-color: rgba(220, 38, 38, 0.2) !important;
+}
+

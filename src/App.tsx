@@ -12,12 +12,28 @@ import TimelineAssembly from './components/TimelineAssembly.tsx';
 import DiarioView from './components/DiarioView.tsx';
 import AdminView from './components/AdminView.tsx';
 import ProjecaoView from './components/ProjecaoView.tsx';
-import { Settings, Camera, Upload, Edit3, Sparkles } from 'lucide-react';
+import { Settings, Camera, Upload, Edit3, Sparkles, Sun, Moon } from 'lucide-react';
 import CompassAnimation from './components/CompassAnimation.tsx';
 
 export default function App() {
   // Simple client-side routing
   const [currentPath, setCurrentPath] = useState(window.location.pathname);
+
+  // Theme state
+  const [theme, setTheme] = useState<'dark' | 'light'>(() => {
+    return (localStorage.getItem('pot_theme') as 'dark' | 'light') || 'dark';
+  });
+
+  useEffect(() => {
+    if (theme === 'light') {
+      document.body.classList.add('light-theme');
+      document.documentElement.classList.add('light-theme');
+    } else {
+      document.body.classList.remove('light-theme');
+      document.documentElement.classList.remove('light-theme');
+    }
+    localStorage.setItem('pot_theme', theme);
+  }, [theme]);
 
   // Participant State
   const [participant, setParticipant] = useState<Participant | null>(null);
@@ -744,6 +760,21 @@ export default function App() {
           <Edit3 className="w-3 h-3 text-[#F27D26]" />
         </button>
       )}
+
+      {/* Light/Dark Mode toggle button */}
+      <button
+        id="btn_theme_toggle"
+        onClick={() => setTheme(prev => prev === 'dark' ? 'light' : 'dark')}
+        className="fixed right-16 bottom-4 md:right-20 md:bottom-6 z-50 p-2.5 rounded-full bg-black/40 hover:bg-[#F27D26]/20 border border-white/10 hover:border-[#F27D26]/40 text-white/50 hover:text-[#F27D26] transition-all duration-300 shadow-lg cursor-pointer"
+        title={theme === 'dark' ? 'Modo Claro' : 'Modo Escuro'}
+        aria-label="Alternar Tema"
+      >
+        {theme === 'dark' ? (
+          <Sun className="w-4 h-4 text-amber-400" />
+        ) : (
+          <Moon className="w-4 h-4 text-indigo-400" />
+        )}
+      </button>
 
       {/* Small subtle gear button at the right */}
       <button
