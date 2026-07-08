@@ -5,14 +5,14 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Participant, CHAPTERS, ChapterDef } from './types.js';
+import { Participant, CHAPTERS, ChapterDef, getAvatarSrc } from './types.js';
 import AberturaView from './components/AberturaView.tsx';
 import ChapterView from './components/ChapterView.tsx';
 import TimelineAssembly from './components/TimelineAssembly.tsx';
 import DiarioView from './components/DiarioView.tsx';
 import AdminView from './components/AdminView.tsx';
 import ProjecaoView from './components/ProjecaoView.tsx';
-import { Settings } from 'lucide-react';
+import { Settings, Camera, Upload, Edit3, Sparkles } from 'lucide-react';
 import CompassAnimation from './components/CompassAnimation.tsx';
 
 export default function App() {
@@ -29,12 +29,89 @@ export default function App() {
 
   // Local state flow
   const [nameInput, setNameInput] = useState('');
+  const [photoSelected, setPhotoSelected] = useState<string | undefined>(undefined);
   const [showJoinModal, setShowJoinModal] = useState(false);
   const [joinError, setJoinError] = useState<string | null>(null);
   const [isJoining, setIsJoining] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [joinTab, setJoinTab] = useState<'new' | 'existing'>('new');
   const [idInput, setIdInput] = useState('');
+
+  // Profile customization states
+  const [showProfileModal, setShowProfileModal] = useState(false);
+  const [profileNameInput, setProfileNameInput] = useState('');
+  const [profilePhotoSelected, setProfilePhotoSelected] = useState<string | undefined>(undefined);
+  const [isUpdatingProfile, setIsUpdatingProfile] = useState(false);
+
+  useEffect(() => {
+    if (participant) {
+      setProfileNameInput(participant.name);
+      setProfilePhotoSelected(participant.photo);
+    }
+  }, [participant]);
+
+  // Handle profile update submit
+  const handleUpdateProfile = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!participant) return;
+    if (!profileNameInput.trim()) return;
+
+    setIsUpdatingProfile(true);
+    try {
+      const res = await fetch('/api/update-profile', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          participantId: participant.id,
+          name: profileNameInput.trim(),
+          photo: profilePhotoSelected,
+        }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        setParticipant(data.participant);
+        setShowProfileModal(false);
+      }
+    } catch (err) {
+      console.warn('[PotencializaProfile] Erro ao atualizar perfil:', err);
+    } finally {
+      setIsUpdatingProfile(false);
+    }
+  };
+
+  // Process and compress image upload to Base64
+  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>, isProfileModal = false) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const targetSize = 160; // 160x160 is perfectly optimized
+        canvas.width = targetSize;
+        canvas.height = targetSize;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          // Centered square cropping
+          const minDim = Math.min(img.width, img.height);
+          const sx = (img.width - minDim) / 2;
+          const sy = (img.height - minDim) / 2;
+          ctx.drawImage(img, sx, sy, minDim, minDim, 0, 0, targetSize, targetSize);
+          const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+          if (isProfileModal) {
+            setProfilePhotoSelected(dataUrl);
+          } else {
+            setPhotoSelected(dataUrl);
+          }
+        }
+      };
+      img.src = event.target?.result as string;
+    };
+    reader.readAsDataURL(file);
+  };
 
   // Admin password states
   const [showAdminPasswordModal, setShowAdminPasswordModal] = useState(false);
@@ -98,7 +175,7 @@ export default function App() {
           }
         }
       } catch (err) {
-        console.error('[PotencializaSync] Erro ao sincronizar estado:', err);
+        console.warn('[PotencializaSync] Erro temporário ao sincronizar estado (reconectando...):', err);
       }
     };
 
@@ -132,7 +209,7 @@ export default function App() {
       const res = await fetch('/api/join', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: nameInput.trim() }),
+        body: JSON.stringify({ name: nameInput.trim(), photo: photoSelected }),
       });
 
       if (res.ok) {
@@ -206,7 +283,7 @@ export default function App() {
         setParticipant(data.participant);
       }
     } catch (err) {
-      console.error('[PotencializaSubmit] Erro ao enviar resposta:', err);
+      console.warn('[PotencializaSubmit] Erro ao enviar resposta:', err);
     } finally {
       setIsSubmitting(false);
     }
@@ -373,6 +450,79 @@ export default function App() {
                           }}
                           className="w-full bg-transparent border-b border-white/10 py-3 text-lg focus:outline-none focus:border-[#F27D26] transition-all duration-300 font-serif italic text-white placeholder:opacity-20 placeholder:text-white"
                         />
+                      </div>
+
+                      {/* Personalização do Avatar */}
+                      <div className="space-y-4 pt-2">
+                        <div className="flex items-center justify-between">
+                          <h4 className="text-xs font-sans font-bold text-white/60 uppercase tracking-widest text-left">
+                            Personalizar Avatar
+                          </h4>
+                          <span className="text-[9px] text-[#F27D26] font-mono tracking-widest uppercase">
+                            Foto ou Preset
+                          </span>
+                        </div>
+
+                        <div className="flex items-center space-x-5 bg-white/[0.02] border border-white/5 rounded-2xl p-4">
+                          {/* Avatar Display */}
+                          <div className="relative shrink-0 w-16 h-16 rounded-full overflow-hidden border-2 border-[#F27D26]/40 p-0.5 bg-black flex items-center justify-center">
+                            <img
+                              src={getAvatarSrc(photoSelected, nameInput || 'P')}
+                              alt="Visualização"
+                              className="w-full h-full rounded-full object-cover"
+                            />
+                            <label className="absolute inset-0 bg-black/60 opacity-0 hover:opacity-100 flex items-center justify-center cursor-pointer transition-opacity duration-200 rounded-full">
+                              <Camera className="w-4 h-4 text-white" />
+                              <input
+                                type="file"
+                                accept="image/*"
+                                onChange={(e) => handlePhotoUpload(e, false)}
+                                className="hidden"
+                              />
+                            </label>
+                          </div>
+
+                          {/* Quick Preset Selector */}
+                          <div className="flex-1 space-y-2">
+                            <p className="text-[10px] text-white/40 font-sans uppercase tracking-widest text-left">
+                              Selecione um tom ou envie sua foto:
+                            </p>
+                            <div className="flex flex-wrap gap-2">
+                              {['preset-1', 'preset-2', 'preset-3', 'preset-4', 'preset-5', 'preset-6'].map((presetId, idx) => (
+                                <button
+                                  key={presetId}
+                                  type="button"
+                                  onClick={() => setPhotoSelected(presetId)}
+                                  className={`w-6 h-6 rounded-full border transition-all duration-300 relative ${
+                                    photoSelected === presetId
+                                      ? 'border-[#F27D26] scale-110 shadow-[0_0_10px_rgba(242,125,38,0.4)]'
+                                      : 'border-white/10 hover:border-white/30 hover:scale-105'
+                                  }`}
+                                  style={{
+                                    background: presetId === 'preset-1' ? 'linear-gradient(135deg, #F27D26, #3a1510)' :
+                                                presetId === 'preset-2' ? 'linear-gradient(135deg, #E0DED7, #F27D26)' :
+                                                presetId === 'preset-3' ? 'linear-gradient(135deg, #10B981, #064E3B)' :
+                                                presetId === 'preset-4' ? 'linear-gradient(135deg, #3B82F6, #1E3A8A)' :
+                                                presetId === 'preset-5' ? 'linear-gradient(135deg, #8B5CF6, #4C1D95)' :
+                                                                          'linear-gradient(135deg, #EC4899, #9D174D)'
+                                  }}
+                                  title={`Preset ${idx + 1}`}
+                                />
+                              ))}
+                              
+                              {/* Upload Button */}
+                              <label className="w-6 h-6 rounded-full bg-white/10 border border-white/10 hover:border-[#F27D26] hover:bg-white/20 flex items-center justify-center cursor-pointer transition-all duration-300">
+                                <Upload className="w-3 h-3 text-white/80" />
+                                <input
+                                  type="file"
+                                  accept="image/*"
+                                  onChange={(e) => handlePhotoUpload(e, false)}
+                                  className="hidden"
+                                />
+                              </label>
+                            </div>
+                          </div>
+                        </div>
                       </div>
 
                       {joinError && (
@@ -573,6 +723,28 @@ export default function App() {
     <div className="relative min-h-screen">
       {renderContent()}
 
+      {/* Floating Personalization Trigger Pill */}
+      {participant && (
+        <button
+          id="btn_edit_profile"
+          onClick={() => {
+            setProfileNameInput(participant.name);
+            setProfilePhotoSelected(participant.photo);
+            setShowProfileModal(true);
+          }}
+          className="fixed left-4 bottom-4 md:left-6 md:bottom-6 z-50 flex items-center space-x-3 px-3 py-2 rounded-full bg-black/75 hover:bg-[#F27D26]/10 border border-white/10 hover:border-[#F27D26]/40 text-white/80 hover:text-white transition-all duration-300 shadow-xl cursor-pointer max-w-[200px]"
+          title="Editar Perfil"
+        >
+          <div className="w-6 h-6 rounded-full overflow-hidden border border-[#F27D26]/40 shrink-0 bg-zinc-900">
+            <img src={getAvatarSrc(participant.photo, participant.name)} className="w-full h-full object-cover" alt="" />
+          </div>
+          <span className="text-[10px] uppercase tracking-wider font-semibold truncate max-w-[90px]">
+            {participant.name.split(' ')[0]}
+          </span>
+          <Edit3 className="w-3 h-3 text-[#F27D26]" />
+        </button>
+      )}
+
       {/* Small subtle gear button at the right */}
       <button
         id="btn_admin_gear"
@@ -583,6 +755,130 @@ export default function App() {
       >
         <Settings className="w-4 h-4 animate-[spin_10s_linear_infinite]" />
       </button>
+
+      {/* Profile Edit Modal */}
+      <AnimatePresence>
+        {showProfileModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-[#050505]/95 backdrop-blur-md flex items-center justify-center p-6 z-50 selection:bg-[#F27D26] selection:text-black"
+          >
+            <motion.div
+              initial={{ scale: 0.95, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.95, y: 20 }}
+              className="bg-[#050505] border border-white/10 rounded-3xl p-8 max-w-sm w-full shadow-2xl relative overflow-hidden"
+            >
+              <div className="absolute top-0 left-1/2 -translate-x-1/2 w-1/2 h-[1px] bg-gradient-to-r from-transparent via-[#F27D26]/50 to-transparent" />
+              
+              <h2 className="text-2xl font-serif italic text-white mb-2 text-center">
+                Personalizar Perfil
+              </h2>
+              <p className="text-white/40 text-xs font-sans mb-6 text-center">
+                Ajuste sua identidade e foto para o diário e o diagrama mandala.
+              </p>
+
+              <form onSubmit={handleUpdateProfile} className="space-y-6">
+                <div className="space-y-2">
+                  <label className="block text-[10px] text-white/40 uppercase tracking-widest text-left font-bold">
+                    Seu Nome
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Seu nome"
+                    value={profileNameInput}
+                    onChange={(e) => setProfileNameInput(e.target.value)}
+                    className="w-full bg-transparent border-b border-white/10 py-2 text-lg focus:outline-none focus:border-[#F27D26] transition-all duration-300 font-serif italic text-white"
+                  />
+                </div>
+
+                {/* Avatar Picker */}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <label className="text-[10px] text-white/40 uppercase tracking-widest font-bold">
+                      Sua Foto / Avatar
+                    </label>
+                  </div>
+
+                  <div className="flex items-center space-x-4 bg-white/[0.02] border border-white/5 rounded-2xl p-3">
+                    <div className="relative shrink-0 w-14 h-14 rounded-full overflow-hidden border border-[#F27D26]/40 p-0.5 bg-black flex items-center justify-center">
+                      <img
+                        src={getAvatarSrc(profilePhotoSelected, profileNameInput || 'P')}
+                        alt="Visualização"
+                        className="w-full h-full rounded-full object-cover"
+                      />
+                      <label className="absolute inset-0 bg-black/60 opacity-0 hover:opacity-100 flex items-center justify-center cursor-pointer transition-opacity duration-200 rounded-full">
+                        <Camera className="w-3.5 h-3.5 text-white" />
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={(e) => handlePhotoUpload(e, true)}
+                          className="hidden"
+                        />
+                      </label>
+                    </div>
+
+                    <div className="flex-1">
+                      <div className="flex flex-wrap gap-1.5 mb-2">
+                        {['preset-1', 'preset-2', 'preset-3', 'preset-4', 'preset-5', 'preset-6'].map((presetId, idx) => (
+                          <button
+                            key={presetId}
+                            type="button"
+                            onClick={() => setProfilePhotoSelected(presetId)}
+                            className={`w-5.5 h-5.5 rounded-full border transition-all duration-300 relative ${
+                              profilePhotoSelected === presetId
+                                ? 'border-[#F27D26] scale-110 shadow-[0_0_8px_rgba(242,125,38,0.4)]'
+                                : 'border-white/10 hover:border-white/30'
+                            }`}
+                            style={{
+                              background: presetId === 'preset-1' ? 'linear-gradient(135deg, #F27D26, #3a1510)' :
+                                          presetId === 'preset-2' ? 'linear-gradient(135deg, #E0DED7, #F27D26)' :
+                                          presetId === 'preset-3' ? 'linear-gradient(135deg, #10B981, #064E3B)' :
+                                          presetId === 'preset-4' ? 'linear-gradient(135deg, #3B82F6, #1E3A8A)' :
+                                          presetId === 'preset-5' ? 'linear-gradient(135deg, #8B5CF6, #4C1D95)' :
+                                                                    'linear-gradient(135deg, #EC4899, #9D174D)'
+                            }}
+                          />
+                        ))}
+
+                        <label className="w-5.5 h-5.5 rounded-full bg-white/10 border border-white/10 hover:border-[#F27D26] flex items-center justify-center cursor-pointer transition-all duration-300">
+                          <Upload className="w-2.5 h-2.5 text-white/80" />
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={(e) => handlePhotoUpload(e, true)}
+                            className="hidden"
+                          />
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex space-x-3 pt-4">
+                  <button
+                    type="submit"
+                    disabled={isUpdatingProfile}
+                    className="flex-1 py-3 bg-[#F27D26] text-black hover:bg-[#F27D26]/80 transition duration-300 rounded-full text-xs font-bold uppercase tracking-wider disabled:opacity-50 cursor-pointer"
+                  >
+                    {isUpdatingProfile ? 'Salvando...' : 'Salvar'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowProfileModal(false)}
+                    className="px-5 py-3 bg-transparent border border-white/10 text-white/60 hover:text-white hover:border-white/20 transition rounded-full text-xs uppercase font-bold tracking-wider cursor-pointer"
+                  >
+                    Fechar
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Password Modal */}
       <AnimatePresence>

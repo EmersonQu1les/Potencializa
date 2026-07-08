@@ -5,7 +5,7 @@
 
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Participant, CHAPTERS } from '../types.js';
+import { Participant, CHAPTERS, getAvatarSrc } from '../types.js';
 import { BookOpen, Printer, Share2, Compass, Award, ShieldAlert, Heart, Map, Sparkles, Check, Download, Copy, ExternalLink, X } from 'lucide-react';
 
 interface DiarioViewProps {
@@ -396,6 +396,17 @@ export default function DiarioView({ participant, onReset }: DiarioViewProps) {
           <h1 className="text-5xl md:text-6xl font-serif italic text-white print-text-dark mb-6">
             Potencializa
           </h1>
+
+          {/* Profile Photo / Avatar */}
+          <div className="flex justify-center mb-8">
+            <div className="w-24 h-24 rounded-full overflow-hidden border-2 border-[#F27D26] p-0.5 bg-zinc-950 shadow-xl">
+              <img
+                src={getAvatarSrc(participant.photo, participant.name)}
+                alt={participant.name}
+                className="w-full h-full rounded-full object-cover"
+              />
+            </div>
+          </div>
 
           <div className="text-[#A8A8A8] font-serif text-lg md:text-xl italic tracking-wide print-text-gray mb-16">
             A Jornada de <br />

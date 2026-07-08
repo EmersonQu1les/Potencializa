@@ -28,6 +28,117 @@ const participants: { [id: string]: Participant } = {};
 
 const STORE_FILE = path.join(process.cwd(), 'participants_store.json');
 
+// Firebase Realtime Database configuration
+const dbBaseUrl = (process.env.FIREBASE_DATABASE_URL || 'https://potencializa2024-6f773-default-rtdb.firebaseio.com').replace(/\/$/, '');
+
+async function firebaseGet<T>(pathStr: string): Promise<T | null> {
+  try {
+    const res = await fetch(`${dbBaseUrl}${pathStr}.json`);
+    if (!res.ok) {
+      throw new Error(`Firebase HTTP error! status: ${res.status}`);
+    }
+    return await res.json() as T;
+  } catch (err) {
+    console.error(`[Firebase RTDB] Error in GET ${pathStr}:`, err);
+    return null;
+  }
+}
+
+async function firebasePut(pathStr: string, data: any): Promise<boolean> {
+  try {
+    const res = await fetch(`${dbBaseUrl}${pathStr}.json`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    if (!res.ok) {
+      throw new Error(`Firebase HTTP error! status: ${res.status}`);
+    }
+    return true;
+  } catch (err) {
+    console.error(`[Firebase RTDB] Error in PUT ${pathStr}:`, err);
+    return false;
+  }
+}
+
+async function firebasePatch(pathStr: string, data: any): Promise<boolean> {
+  try {
+    const res = await fetch(`${dbBaseUrl}${pathStr}.json`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    if (!res.ok) {
+      throw new Error(`Firebase HTTP error! status: ${res.status}`);
+    }
+    return true;
+  } catch (err) {
+    console.error(`[Firebase RTDB] Error in PATCH ${pathStr}:`, err);
+    return false;
+  }
+}
+
+async function firebaseDelete(pathStr: string): Promise<boolean> {
+  try {
+    const res = await fetch(`${dbBaseUrl}${pathStr}.json`, {
+      method: 'DELETE'
+    });
+    if (!res.ok) {
+      throw new Error(`Firebase HTTP error! status: ${res.status}`);
+    }
+    return true;
+  } catch (err) {
+    console.error(`[Firebase RTDB] Error in DELETE ${pathStr}:`, err);
+    return false;
+  }
+}
+
+let isSyncing = false;
+async function syncFromFirebase() {
+  if (isSyncing) return;
+  isSyncing = true;
+  try {
+    const data = await firebaseGet<{
+      currentChapter?: number;
+      projectionReleased?: boolean;
+      participants?: { [id: string]: Participant };
+    }>('/workshop');
+
+    if (data) {
+      if (data.currentChapter !== undefined) {
+        currentChapter = data.currentChapter;
+      }
+      if (data.projectionReleased !== undefined) {
+        projectionReleased = data.projectionReleased;
+      }
+      if (data.participants) {
+        // Merge participants safely to avoid overwriting newer local heartbeats
+        for (const [id, p] of Object.entries(data.participants)) {
+          const localP = participants[id];
+          if (!localP || p.lastHeartbeat >= localP.lastHeartbeat) {
+            participants[id] = p;
+          }
+        }
+        // Remove participants that were deleted in Firebase
+        for (const id of Object.keys(participants)) {
+          if (!data.participants[id]) {
+            delete participants[id];
+          }
+        }
+      } else {
+        // Clear local participants if empty in Firebase
+        for (const id of Object.keys(participants)) {
+          delete participants[id];
+        }
+      }
+    }
+  } catch (err) {
+    console.error('[PotencializaStore] Error syncing from Firebase:', err);
+  } finally {
+    isSyncing = false;
+  }
+}
+
 function loadData() {
   try {
     if (fs.existsSync(STORE_FILE)) {
@@ -42,10 +153,10 @@ function loadData() {
       if (data.participants) {
         Object.assign(participants, data.participants);
       }
-      console.log(`[PotencializaStore] Loaded data: currentChapter=${currentChapter}, projectionReleased=${projectionReleased}, ${Object.keys(participants).length} participants`);
+      console.log(`[PotencializaStore] Loaded backup data: currentChapter=${currentChapter}, projectionReleased=${projectionReleased}, ${Object.keys(participants).length} participants`);
     }
   } catch (err) {
-    console.error('[PotencializaStore] Error reading store:', err);
+    console.error('[PotencializaStore] Error reading local store:', err);
   }
 }
 
@@ -57,12 +168,23 @@ function saveData() {
       participants
     }, null, 2), 'utf-8');
   } catch (err) {
-    console.error('[PotencializaStore] Error writing store:', err);
+    console.error('[PotencializaStore] Error writing local store:', err);
   }
 }
 
-// Load data on start
+// Load backup data and initialize Firebase RTDB sync
 loadData();
+
+async function initDatabase() {
+  console.log('[PotencializaStore] Initializing Firebase RTDB connection...');
+  await syncFromFirebase();
+  console.log(`[PotencializaStore] Initial sync complete. currentChapter=${currentChapter}, projectionReleased=${projectionReleased}, participants=${Object.keys(participants).length}`);
+  
+  // Start background sync timer to keep multiple server instances aligned in real-time
+  setInterval(syncFromFirebase, 2500);
+}
+
+initDatabase();
 
 // Clean up inactive heartbeats or mark them inactive
 function getActiveParticipants(): Participant[] {
@@ -85,8 +207,15 @@ app.get('/api/session', (req, res) => {
   const activeList = getActiveParticipants();
   
   if (participantId && participants[participantId]) {
-    participants[participantId].lastHeartbeat = Date.now();
+    const now = Date.now();
+    participants[participantId].lastHeartbeat = now;
     participants[participantId].active = true;
+    
+    // Save heartbeat to Firebase asynchronously in the background (non-blocking for fast response)
+    firebasePatch(`/workshop/participants/${participantId}`, {
+      lastHeartbeat: now,
+      active: true
+    });
   }
 
   // Count participants who submitted the CURRENT chapter (if it's an active chapter 1-7)
@@ -107,8 +236,8 @@ app.get('/api/session', (req, res) => {
 });
 
 // Join the journey (creates new participant)
-app.post('/api/join', (req, res) => {
-  const { name } = req.body;
+app.post('/api/join', async (req, res) => {
+  const { name, photo } = req.body;
   if (!name || typeof name !== 'string' || name.trim() === '') {
     res.status(400).json({ error: 'Nome inválido.' });
     return;
@@ -122,6 +251,7 @@ app.post('/api/join', (req, res) => {
   const newParticipant: Participant = {
     id,
     name: cleanName,
+    photo: photo || undefined,
     active: true,
     lastHeartbeat: Date.now(),
     status: 'idle',
@@ -131,11 +261,41 @@ app.post('/api/join', (req, res) => {
 
   participants[id] = newParticipant;
   saveData();
+  
+  // Write to Firebase
+  await firebasePut(`/workshop/participants/${id}`, newParticipant);
+  
   res.json(newParticipant);
 });
 
+// Update participant profile (name and/or photo)
+app.post('/api/update-profile', async (req, res) => {
+  const { participantId, name, photo } = req.body;
+  if (!participantId || !participants[participantId]) {
+    res.status(404).json({ error: 'Participante não encontrado.' });
+    return;
+  }
+
+  const p = participants[participantId];
+  if (name && typeof name === 'string' && name.trim() !== '') {
+    p.name = name.trim();
+  }
+  if (photo !== undefined) {
+    p.photo = photo;
+  }
+  p.lastHeartbeat = Date.now();
+  p.active = true;
+
+  saveData();
+  
+  // Write to Firebase
+  await firebasePut(`/workshop/participants/${participantId}`, p);
+
+  res.json({ success: true, participant: p });
+});
+
 // Resume existing journey using Participant ID
-app.post('/api/resume', (req, res) => {
+app.post('/api/resume', async (req, res) => {
   const { participantId } = req.body;
   if (!participantId || typeof participantId !== 'string' || participantId.trim() === '') {
     res.status(400).json({ error: 'ID de acesso inválido.' });
@@ -149,6 +309,13 @@ app.post('/api/resume', (req, res) => {
     p.lastHeartbeat = Date.now();
     p.active = true;
     saveData();
+    
+    // Write to Firebase
+    await firebasePatch(`/workshop/participants/${id}`, {
+      lastHeartbeat: p.lastHeartbeat,
+      active: true
+    });
+    
     res.json(p);
   } else {
     res.status(404).json({ error: 'ID não encontrado. Verifique se digitou corretamente ou crie um novo.' });
@@ -159,8 +326,16 @@ app.post('/api/resume', (req, res) => {
 app.post('/api/heartbeat', (req, res) => {
   const { participantId } = req.body;
   if (participantId && participants[participantId]) {
-    participants[participantId].lastHeartbeat = Date.now();
+    const now = Date.now();
+    participants[participantId].lastHeartbeat = now;
     participants[participantId].active = true;
+    
+    // Save heartbeat to Firebase asynchronously in the background
+    firebasePatch(`/workshop/participants/${participantId}`, {
+      lastHeartbeat: now,
+      active: true
+    });
+    
     res.json({ success: true });
   } else {
     res.status(404).json({ error: 'Participante não encontrado.' });
@@ -168,7 +343,7 @@ app.post('/api/heartbeat', (req, res) => {
 });
 
 // Submit answer for a chapter
-app.post('/api/submit', (req, res) => {
+app.post('/api/submit', async (req, res) => {
   const { participantId, chapterId, answers } = req.body;
   
   if (!participantId || !participants[participantId]) {
@@ -191,6 +366,10 @@ app.post('/api/submit', (req, res) => {
   p.status = 'finished';
 
   saveData();
+  
+  // Write to Firebase
+  await firebasePut(`/workshop/participants/${participantId}`, p);
+
   res.json({ success: true, participant: p });
 });
 
@@ -203,6 +382,7 @@ app.get('/api/projection', (req, res) => {
     participants: allList.map(p => ({
       id: p.id,
       name: p.name,
+      photo: p.photo,
       currentChapterSubmitted: p.currentChapterSubmitted,
       answers: p.answers
     }))
@@ -232,7 +412,7 @@ app.get('/api/admin/summary', (req, res) => {
 });
 
 // Control the chapter release
-app.post('/api/admin/control', (req, res) => {
+app.post('/api/admin/control', async (req, res) => {
   const { chapter } = req.body;
   if (chapter === undefined || typeof chapter !== 'number') {
     res.status(400).json({ error: 'Capítulo inválido.' });
@@ -256,11 +436,20 @@ app.post('/api/admin/control', (req, res) => {
   }
 
   saveData();
+  
+  // Write current chapter release to Firebase
+  await firebasePut('/workshop/currentChapter', currentChapter);
+  
+  // Patch each participant's status to Firebase
+  for (const p of allList) {
+    await firebasePatch(`/workshop/participants/${p.id}`, { status: p.status });
+  }
+
   res.json({ success: true, currentChapter });
 });
 
 // Control the projection release
-app.post('/api/admin/projection', (req, res) => {
+app.post('/api/admin/projection', async (req, res) => {
   const { released } = req.body;
   if (released === undefined || typeof released !== 'boolean') {
     res.status(400).json({ error: 'released must be a boolean.' });
@@ -269,15 +458,23 @@ app.post('/api/admin/projection', (req, res) => {
 
   projectionReleased = released;
   saveData();
+  
+  // Write to Firebase
+  await firebasePut('/workshop/projectionReleased', projectionReleased);
+  
   res.json({ success: true, projectionReleased });
 });
 
 // Admin deletes a participant from the list
-app.post('/api/admin/remove-participant', (req, res) => {
+app.post('/api/admin/remove-participant', async (req, res) => {
   const { id } = req.body;
   if (id && participants[id]) {
     delete participants[id];
     saveData();
+    
+    // Delete from Firebase
+    await firebaseDelete(`/workshop/participants/${id}`);
+    
     res.json({ success: true });
   } else {
     res.status(404).json({ error: 'Participante não encontrado.' });
@@ -285,13 +482,21 @@ app.post('/api/admin/remove-participant', (req, res) => {
 });
 
 // Reset entire workshop session
-app.post('/api/admin/reset', (req, res) => {
+app.post('/api/admin/reset', async (req, res) => {
   currentChapter = 0;
   projectionReleased = false;
   for (const key of Object.keys(participants)) {
     delete participants[key];
   }
   saveData();
+  
+  // Clear / Reset Firebase workshop object
+  await firebasePut('/workshop', {
+    currentChapter: 0,
+    projectionReleased: false,
+    participants: {}
+  });
+
   res.json({ success: true, currentChapter });
 });
 

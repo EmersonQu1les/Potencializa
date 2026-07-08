@@ -32,7 +32,7 @@ export default function AdminView() {
       }
       setLoading(false);
     } catch (err) {
-      console.error(err);
+      console.warn('Conexão perdida com o servidor:', err);
       setError('Conexão perdida com o servidor.');
     }
   };
@@ -54,7 +54,7 @@ export default function AdminView() {
         fetchSummary();
       }
     } catch (err) {
-      console.error(err);
+      console.warn('Erro ao controlar capítulo:', err);
     }
   };
 
@@ -69,7 +69,7 @@ export default function AdminView() {
         fetchSummary();
       }
     } catch (err) {
-      console.error(err);
+      console.warn('Erro ao alternar projeção:', err);
     }
   };
 
@@ -81,7 +81,7 @@ export default function AdminView() {
         fetchSummary();
       }
     } catch (err) {
-      console.error(err);
+      console.warn('Erro ao resetar workshop:', err);
     }
   };
 
@@ -96,7 +96,7 @@ export default function AdminView() {
         fetchSummary();
       }
     } catch (err) {
-      console.error(err);
+      console.warn('Erro ao remover participante:', err);
     }
   };
 
